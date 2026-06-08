@@ -92,6 +92,24 @@ Any stakeholder — technical or non-technical — can get answers to supply cha
 **Old way:** Request from analyst → analyst builds report → 24-48 hour turnaround.
 **New way:** Director queries directly. No analyst dependency.
 
+### Use Case 4 — Freight Cost Analysis (SQL)
+**User:** Procurement Manager
+**Question:** "Which shipment mode has the highest average freight cost?"
+**Old way:** Export to Excel, create pivot table, calculate averages manually. 30+ minutes.
+**New way:** Plain English question answered instantly with precise figures.
+
+### Use Case 5 — Country Cost Comparison (SQL)
+**User:** Regional Director
+**Question:** "Which country had the highest total freight cost?"
+**Old way:** SQL query across multiple tables, requires technical knowledge.
+**New way:** Natural language query returns precise answer in seconds.
+
+### Use Case 6 — Weight and Mode Analysis (SQL)
+**User:** Logistics Coordinator
+**Question:** "Which shipment mode carries the heaviest shipments on average?"
+**Old way:** Manual calculation across 6,000+ rows in Excel.
+**New way:** Instant precise answer from SQL agent.
+
 ---
 
 ## Success Metrics
@@ -128,22 +146,37 @@ Tracked by monitoring how often the system returns "insufficient data" responses
 
 ## Ground Truth Evaluation Questions
 
-The following questions have verified correct answers from the dataset and are used to evaluate system performance:
+### RAG Questions (Pattern & Context)
 
 | # | Question | Type |
 |---|---|---|
-| 1 | Which countries received shipments? | Simple — categorical |
+| 1 | Which countries received shipments and what products did they receive? | Simple — categorical |
 | 2 | What products were shipped by air freight? | Simple — filtered |
 | 3 | Which vendors supplied ARV products? | Medium — filtered |
-| 4 | Which countries received pediatric ARV products? | Medium — multi-variable |
+| 4 | Which countries received pediatric ARV products and which vendors supplied them? | Medium — multi-variable |
 | 5 | What shipment modes are used in the dataset? | Simple — categorical |
 | 6 | Which vendors supplied pediatric products? | Medium — filtered |
 | 7 | Which manufacturing sites supplied ARV products? | Medium — filtered |
-| 8 | What is the most common shipment mode? | Complex — analytical |
-| 9 | Which countries received the highest quantity shipments? | Complex — analytical |
-| 10 | Compare ARV vs HRDT shipment patterns across countries | Complex — multi-variable |
 
----
+### SQL Questions (Precise Numerical)
+
+| # | Question | Type |
+|---|---|---|
+| 1 | How many shipments were sent to each country? | Count |
+| 2 | How many shipments were sent by air versus truck? | Count — comparison |
+| 3 | How many ARV shipments were there compared to HRDT? | Count — comparison |
+| 4 | How many pediatric ARV shipments were sent by air freight? | Count — multi-variable |
+| 5 | Which country received the highest number of shipments? | Ranking |
+| 6 | Which vendor had the most shipments? | Ranking |
+| 7 | Which shipment mode was used most frequently? | Ranking |
+| 8 | What is the average freight cost per shipment? | Aggregation |
+| 9 | Which shipment mode has the highest average freight cost? | Aggregation — comparison |
+| 10 | What is the total freight cost of all shipments to Nigeria? | Aggregation — filtered |
+| 11 | Which country had the highest total freight cost? | Aggregation — ranking |
+| 12 | What is the average weight per shipment? | Aggregation |
+| 13 | Which shipment mode carries the heaviest shipments on average? | Aggregation — comparison |
+| 14 | What is the average freight cost per kg for air versus ocean shipments? | Complex — multi-variable |
+| 15 | Which country had the highest average freight cost per shipment? | Complex — ranking |
 
 ## Known Limitations
 
@@ -153,8 +186,9 @@ The following questions have verified correct answers from the dataset and are u
 - Free tier API limits restrict to ~20 requests per day on Gemini 2.5 Flash Lite
 
 **Planned Version 2 Improvements:**
-- SQL agent layer for precise numerical queries (counts, averages, totals, rankings)
-- User feedback mechanism (thumbs up/down) to track satisfaction
+- SQL agent layer for precise numerical queries — 15 defined questions covering freight cost, weight, shipment counts, and country rankings
+- Data cleaning pipeline — automatically filters non-numeric freight cost and weight values before SQL analysis
+- User feedback mechanism (thumbs up/down) to track answer satisfaction
 - Fallback mechanism for graceful handling of unanswerable questions
 - Conversation memory for follow-up questions
 
