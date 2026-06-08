@@ -23,7 +23,7 @@ vectorstore = Chroma.from_documents(chunks, embeddings, persist_directory="./chr
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", google_api_key=os.getenv("GOOGLE_API_KEY"))
 
 question = "Which country had the highest freight cost?"
-docs = vectorstore.as_retriever().invoke(question)
+docs = vectorstore.as_retriever(search_kwargs={"k": 20}).invoke(question)
 context = "\n".join([doc.page_content for doc in docs])
 prompt = f"Based on this supply chain data:\n{context}\n\nAnswer this question: {question}"
 response = llm.invoke(prompt)
