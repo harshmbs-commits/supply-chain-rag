@@ -20,7 +20,7 @@ chunks = text_splitter.split_documents(documents)
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 vectorstore = Chroma.from_documents(chunks, embeddings, persist_directory="./chroma_db")
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GOOGLE_API_KEY"))
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", google_api_key=os.getenv("GOOGLE_API_KEY"))
 
 question = "Which country had the highest freight cost?"
 docs = vectorstore.as_retriever().invoke(question)
