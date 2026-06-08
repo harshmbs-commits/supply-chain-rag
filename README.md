@@ -22,13 +22,13 @@ This tool allows supply chain professionals to query a large logistics dataset u
 ## Architecture
 
 User Question
-↓
+⬇
 HuggingFace Embeddings (all-MiniLM-L6-v2)
-↓
+⬇
 ChromaDB Vector Store (semantic search)
-↓
+⬇
 Retrieved Context + Question → Google Gemini 2.5 Flash
-↓
+⬇
 Natural Language Answer
 
 ## Tech Stack
