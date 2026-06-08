@@ -2,6 +2,8 @@ import streamlit as st
 import os
 import pandas as pd
 import sqlite3
+import csv
+from datetime import datetime          # NEW: for timestamps on feedback
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
@@ -14,6 +16,25 @@ load_dotenv()
 
 st.title("Supply Chain Intelligence Assistant")
 st.write("Ask any question about the supply chain shipment data.")
+
+# ── NEW: Feedback logging function ───────────────────────────────────────────
+def save_feedback(question, answer, rating):
+    """
+    Saves user feedback to a local CSV file called feedback_log.csv.
+    Each row contains: timestamp, the question asked, the answer given, and the rating.
+    """
+    file_exists = os.path.isfile("feedback_log.csv")
+    with open("feedback_log.csv", "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["timestamp", "question", "answer", "rating"])
+        writer.writerow([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            question,
+            answer,
+            rating
+        ])
+# ─────────────────────────────────────────────────────────────────────────────
 
 @st.cache_resource
 def load_rag_system():
@@ -176,6 +197,15 @@ with col2:
 if "selected_question" not in st.session_state:
     st.session_state.selected_question = ""
 
+# ── NEW: Session state to remember last answer for feedback ──────────────────
+if "last_question" not in st.session_state:
+    st.session_state.last_question = ""
+if "last_answer" not in st.session_state:
+    st.session_state.last_answer = ""
+if "feedback_given" not in st.session_state:
+    st.session_state.feedback_given = False
+# ─────────────────────────────────────────────────────────────────────────────
+
 question = st.text_input(
     "Your question:", 
     value=st.session_state.selected_question, 
@@ -193,7 +223,47 @@ if st.button("Ask"):
                 answer, source = answer_with_rag(question, vectorstore, llm)
                 st.info("🔍 Answered using AI — contextual pattern analysis")
 
-            st.success("Answer:")
-            st.write(answer)
+           # ── Save answer to session state; reset feedback flag ────────────
+            st.session_state.last_question = question
+            st.session_state.last_answer = answer
+            st.session_state.feedback_given = False
+            # ─────────────────────────────────────────────────────────────────
     else:
         st.warning("Please enter a question first.")
+
+# ── Persistent answer display — survives reruns (e.g. after feedback click) ──
+if st.session_state.last_answer:
+    st.success("Answer:")
+    st.write(st.session_state.last_answer)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── NEW: Feedback buttons — shown after any answer exists ────────────────────
+if st.session_state.last_answer and not st.session_state.feedback_given:
+    st.markdown("---")
+    st.markdown("**Was this answer helpful?**")
+    col_up, col_down, col_spacer = st.columns([1, 1, 8])
+
+    with col_up:
+        if st.button("👍", key="thumbs_up"):
+            save_feedback(
+                st.session_state.last_question,
+                st.session_state.last_answer,
+                "positive"
+            )
+            st.session_state.feedback_given = True
+            st.rerun()
+
+    with col_down:
+        if st.button("👎", key="thumbs_down"):
+            save_feedback(
+                st.session_state.last_question,
+                st.session_state.last_answer,
+                "negative"
+            )
+            st.session_state.feedback_given = True
+            st.rerun()
+
+if st.session_state.feedback_given:
+    st.markdown("---")
+    st.success("✅ Thank you for your feedback!")
+# ─────────────────────────────────────────────────────────────────────────────
