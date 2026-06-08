@@ -1,0 +1,5 @@
+timestamp,question,answer,rating
+2026-06-09 00:32:05,What is the average freight cost per shipment?,"Based on the data, the average freight cost per shipment is approximately $11,103.23. This suggests that the total freight costs for all shipments have been divided by the total number of shipments to get this average cost.",positive
+2026-06-09 00:39:49,What is the average freight cost per kg for air shipments?,The average freight cost per kilogram for air shipments is approximately $33.52.,positive
+2026-06-09 00:59:08,Which country received the most shipments?,"Based on the given SQL result, it appears that Nigeria received the most shipments. However, I cannot provide a specific number of shipments as the result only includes the country.",positive
+2026-06-09 01:01:35,What is the GDP of Nigeria?,"⚠️ I can only answer questions about the USAID Supply Chain Shipment dataset. Try asking about shipment costs, vendors, countries, freight modes, or product types.",positive
