@@ -29,7 +29,25 @@ def load_rag_system():
 
 vectorstore, llm = load_rag_system()
 
-question = st.text_input("Your question:", placeholder="e.g. Which vendor had the most shipments?")
+st.markdown("### Recommended Questions")
+st.write("Click any question below or type your own:")
+
+recommended_questions = [
+    "Which countries received shipments and what products did they receive?",
+    "What products were shipped by air freight?",
+    "Which countries received pediatric ARV products and which vendors supplied them?",
+    "Which vendors supplied ARV products and what shipment mode did they use?",
+    "Compare shipment patterns for ARV versus HRDT product groups across different countries?"
+]
+
+if "selected_question" not in st.session_state:
+    st.session_state.selected_question = ""
+
+for q in recommended_questions:
+    if st.button(q):
+        st.session_state.selected_question = q
+
+question = st.text_input("Your question:", value=st.session_state.selected_question, placeholder="e.g. Which vendor had the most shipments?")
 
 if st.button("Ask"):
     if question:
