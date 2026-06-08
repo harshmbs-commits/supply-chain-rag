@@ -34,7 +34,7 @@ question = st.text_input("Your question:", placeholder="e.g. Which vendor had th
 if st.button("Ask"):
     if question:
         with st.spinner("Searching supply chain data..."):
-            docs = vectorstore.as_retriever(search_kwargs={"k": 50}).invoke(question)
+            docs = vectorstore.as_retriever(search_kwargs={"k": 20}).invoke(question)
             context = "\n".join([doc.page_content for doc in docs])
             prompt = f"Based on this supply chain data:\n{context}\n\nAnswer this question: {question}"
             response = llm.invoke(prompt)
