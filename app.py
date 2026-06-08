@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import sqlite3
 import csv
-from datetime import datetime          # NEW: for timestamps on feedback
+from datetime import datetime
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
@@ -17,12 +17,7 @@ load_dotenv()
 st.title("Supply Chain Intelligence Assistant")
 st.write("Ask any question about the supply chain shipment data.")
 
-# ── NEW: Feedback logging function ───────────────────────────────────────────
 def save_feedback(question, answer, rating):
-    """
-    Saves user feedback to a local CSV file called feedback_log.csv.
-    Each row contains: timestamp, the question asked, the answer given, and the rating.
-    """
     file_exists = os.path.isfile("feedback_log.csv")
     with open("feedback_log.csv", "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -34,16 +29,15 @@ def save_feedback(question, answer, rating):
             answer,
             rating
         ])
-# ─────────────────────────────────────────────────────────────────────────────
 
 @st.cache_resource
 def load_rag_system():
     df = pd.read_csv("SCMS_Delivery_History_Dataset.csv")
     df = df.fillna("Unknown")
-    key_columns = ['Country', 'Shipment Mode', 'Vendor', 'Item Description', 
-                   'Product Group', 'Sub Classification', 'Scheduled Delivery Date', 
-                   'Delivered to Client Date', 'Weight (Kilograms)', 
-                   'Freight Cost (USD)', 'Line Item Quantity', 'Unit Price', 
+    key_columns = ['Country', 'Shipment Mode', 'Vendor', 'Item Description',
+                   'Product Group', 'Sub Classification', 'Scheduled Delivery Date',
+                   'Delivered to Client Date', 'Weight (Kilograms)',
+                   'Freight Cost (USD)', 'Line Item Quantity', 'Unit Price',
                    'Manufacturing Site']
     texts = df[key_columns].fillna('Unknown').apply(
         lambda row: " | ".join([f"{col}: {row[col]}" for col in key_columns]), axis=1
@@ -93,9 +87,24 @@ def get_llm():
         groq_api_key=os.getenv("GROQ_API_KEY")
     )
 
+def is_out_of_scope(question):
+    supply_chain_keywords = [
+        'shipment', 'ship', 'freight', 'vendor', 'country', 'cost',
+        'product', 'delivery', 'weight', 'air', 'truck', 'ocean',
+        'arv', 'supply', 'chain', 'price', 'unit', 'quantity',
+        'manufacture', 'site', 'mode', 'pediatric', 'adult',
+        'average', 'total', 'highest', 'lowest', 'most', 'least',
+        'expensive', 'cheapest', 'shipments', 'vendors', 'countries',
+        'hrdt', 'antm', 'act', 'mrdt', 'scms', 'usaid', 'Nigeria',
+        'zambia', 'ethiopia', 'tanzania', 'uganda', 'south africa',
+        'kenya', 'vietnam', 'haiti', 'zimbabwe', 'mozambique'
+    ]
+    question_lower = question.lower()
+    return not any(keyword in question_lower for keyword in supply_chain_keywords)
+
 def is_sql_question(question):
-    sql_keywords = ['how many', 'average', 'total', 'highest', 'lowest', 
-                    'most', 'least', 'count', 'per kg', 'cost', 'maximum', 
+    sql_keywords = ['how many', 'average', 'total', 'highest', 'lowest',
+                    'most', 'least', 'count', 'per kg', 'cost', 'maximum',
                     'minimum', 'sum', 'ranking', 'rank', 'expensive', 'cheapest']
     question_lower = question.lower()
     return any(keyword in question_lower for keyword in sql_keywords)
@@ -197,47 +206,49 @@ with col2:
 if "selected_question" not in st.session_state:
     st.session_state.selected_question = ""
 
-# ── NEW: Session state to remember last answer for feedback ──────────────────
 if "last_question" not in st.session_state:
     st.session_state.last_question = ""
 if "last_answer" not in st.session_state:
     st.session_state.last_answer = ""
 if "feedback_given" not in st.session_state:
     st.session_state.feedback_given = False
-# ─────────────────────────────────────────────────────────────────────────────
 
 question = st.text_input(
-    "Your question:", 
-    value=st.session_state.selected_question, 
+    "Your question:",
+    value=st.session_state.selected_question,
     placeholder="e.g. Which vendor had the most shipments?"
 )
 
 if st.button("Ask"):
     if question:
         with st.spinner("Searching supply chain data..."):
-            llm = get_llm()
-            if is_sql_question(question):
-                answer, source = answer_with_sql(question, conn, llm)
-                st.info("📊 Answered using SQL — precise numerical analysis")
+            if is_out_of_scope(question):
+                answer = (
+                    "⚠️ I can only answer questions about the USAID Supply Chain "
+                    "Shipment dataset. Try asking about shipment costs, vendors, "
+                    "countries, freight modes, or product types."
+                )
+                source = "fallback"
+                st.warning("This question appears to be outside the scope of the dataset.")
             else:
-                answer, source = answer_with_rag(question, vectorstore, llm)
-                st.info("🔍 Answered using AI — contextual pattern analysis")
+                llm = get_llm()
+                if is_sql_question(question):
+                    answer, source = answer_with_sql(question, conn, llm)
+                    st.info("📊 Answered using SQL — precise numerical analysis")
+                else:
+                    answer, source = answer_with_rag(question, vectorstore, llm)
+                    st.info("🔍 Answered using AI — contextual pattern analysis")
 
-           # ── Save answer to session state; reset feedback flag ────────────
             st.session_state.last_question = question
             st.session_state.last_answer = answer
             st.session_state.feedback_given = False
-            # ─────────────────────────────────────────────────────────────────
     else:
         st.warning("Please enter a question first.")
 
-# ── Persistent answer display — survives reruns (e.g. after feedback click) ──
 if st.session_state.last_answer:
     st.success("Answer:")
     st.write(st.session_state.last_answer)
-# ─────────────────────────────────────────────────────────────────────────────
 
-# ── NEW: Feedback buttons — shown after any answer exists ────────────────────
 if st.session_state.last_answer and not st.session_state.feedback_given:
     st.markdown("---")
     st.markdown("**Was this answer helpful?**")
@@ -266,4 +277,3 @@ if st.session_state.last_answer and not st.session_state.feedback_given:
 if st.session_state.feedback_given:
     st.markdown("---")
     st.success("✅ Thank you for your feedback!")
-# ─────────────────────────────────────────────────────────────────────────────
