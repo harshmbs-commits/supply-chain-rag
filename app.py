@@ -17,7 +17,8 @@ st.write("Ask any question about the supply chain shipment data.")
 def load_rag_system():
     df = pd.read_csv("SCMS_Delivery_History_Dataset.csv")
     df = df.fillna("Unknown")
-    texts = df.apply(lambda row: " | ".join([f"{col}: {row[col]}" for col in df.columns]), axis=1).tolist()
+    key_columns = ['Country', 'Shipment Mode', 'Vendor', 'Item Description', 'Product Group', 'Sub Classification', 'Scheduled Delivery Date', 'Delivered to Client Date', 'Weight (Kilograms)', 'Freight Cost (USD)', 'Line Item Quantity', 'Unit Price', 'Manufacturing Site']
+    texts = df[key_columns].fillna('Unknown').apply(lambda row: " | ".join([f"{col}: {row[col]}" for col in key_columns]), axis=1).tolist()
     documents = [Document(page_content=text) for text in texts]
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = text_splitter.split_documents(documents)
