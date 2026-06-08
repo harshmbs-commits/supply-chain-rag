@@ -163,7 +163,8 @@ live dataset:
 | Question | Answer |
 |---|---|
 | Average freight cost per shipment | $11,103.23 |
-| Most frequent vendor | SCMS from RDC |
+| Country with highest total freight cost | Nigeria — $14,268,550.39 |
+| Most frequent vendor | SCMS from RDC — 5,404 shipments |
 | Average freight cost per kg — Air | $33.52 |
 
 *Note: Freight cost calculations exclude 14% of records where cost is listed 

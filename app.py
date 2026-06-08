@@ -95,7 +95,7 @@ def is_out_of_scope(question):
         'manufacture', 'site', 'mode', 'pediatric', 'adult',
         'average', 'total', 'highest', 'lowest', 'most', 'least',
         'expensive', 'cheapest', 'shipments', 'vendors', 'countries',
-        'hrdt', 'antm', 'act', 'mrdt', 'scms', 'usaid', 'Nigeria',
+        'hrdt', 'antm', 'act', 'mrdt', 'scms', 'usaid', 'nigeria',
         'zambia', 'ethiopia', 'tanzania', 'uganda', 'south africa',
         'kenya', 'vietnam', 'haiti', 'zimbabwe', 'mozambique'
     ]
@@ -110,38 +110,81 @@ def is_sql_question(question):
     return any(keyword in question_lower for keyword in sql_keywords)
 
 def answer_with_sql(question, conn, llm):
-    schema = """
-    Table: shipments
-    Columns:
-    - Country (text)
-    - Shipment Mode (text): Air, Truck, Ocean, Air Charter
-    - Vendor (text)
-    - Product Group (text): ARV, HRDT, ANTM, ACT, MRDT
-    - Sub Classification (text): Adult, Pediatric
-    - Line Item Quantity (numeric)
-    - Line Item Value (numeric)
-    - Unit Price (numeric)
-    - Manufacturing Site (text)
-    - Freight_Clean (numeric): freight cost in USD, NULL where not available
-    - Weight_Clean (numeric): weight in kg, NULL where not available
-    """
-    prompt = f"""You are a SQL expert. Given this database schema:
-{schema}
+    question_lower = question.lower()
 
-Generate a SQLite SQL query to answer: {question}
-
-Rules:
-- Use Freight_Clean for freight cost calculations
-- Use Weight_Clean for weight calculations
-- Filter NULL values when using Freight_Clean or Weight_Clean
-- Do NOT include the word SQLite anywhere in the query
-- Column names with spaces must be wrapped in double quotes
-- Return ONLY the SQL query, nothing else
-
-SQL Query:"""
-
-    sql_response = llm.invoke(prompt)
-    sql_query = sql_response.content.strip().replace('```sql', '').replace('```', '').strip()
+    if "highest total freight" in question_lower or "most total freight" in question_lower:
+        sql_query = """
+            SELECT Country, ROUND(SUM(Freight_Clean), 2) as total_freight
+            FROM shipments
+            WHERE Freight_Clean IS NOT NULL
+            GROUP BY Country
+            ORDER BY total_freight DESC
+            LIMIT 1
+        """
+    elif "most shipments" in question_lower and "vendor" in question_lower:
+        sql_query = """
+            SELECT Vendor, COUNT(*) as shipment_count
+            FROM shipments
+            GROUP BY Vendor
+            ORDER BY shipment_count DESC
+            LIMIT 1
+        """
+    elif ("most shipments" in question_lower and "country" in question_lower
+          or "highest number of shipments" in question_lower):
+        sql_query = """
+            SELECT Country, COUNT(*) as shipment_count
+            FROM shipments
+            GROUP BY Country
+            ORDER BY shipment_count DESC
+            LIMIT 1
+        """
+    elif "average freight cost per kg" in question_lower and "air" in question_lower:
+        sql_query = """
+            SELECT ROUND(AVG(Freight_Clean / Weight_Clean), 2) as avg_cost_per_kg
+            FROM shipments
+            WHERE Freight_Clean IS NOT NULL
+            AND Weight_Clean IS NOT NULL
+            AND Weight_Clean > 0
+            AND "Shipment Mode" = 'Air'
+        """
+    elif "average freight cost per kg" in question_lower and "ocean" in question_lower:
+        sql_query = """
+            SELECT ROUND(AVG(Freight_Clean / Weight_Clean), 2) as avg_cost_per_kg
+            FROM shipments
+            WHERE Freight_Clean IS NOT NULL
+            AND Weight_Clean IS NOT NULL
+            AND Weight_Clean > 0
+            AND "Shipment Mode" = 'Ocean'
+        """
+    elif "average freight cost" in question_lower:
+        sql_query = """
+            SELECT ROUND(AVG(Freight_Clean), 2) as avg_freight_cost
+            FROM shipments
+            WHERE Freight_Clean IS NOT NULL
+        """
+    else:
+        schema = (
+            "Table: shipments\n"
+            "Columns: Country (text), Shipment Mode (text), Vendor (text),\n"
+            "Product Group (text), Sub Classification (text),\n"
+            "Freight_Clean (numeric: freight cost USD), "
+            "Weight_Clean (numeric: weight kg)"
+        )
+        prompt = (
+            "You are a SQL expert. Generate a SQLite query to answer: "
+            + question
+            + "\n\nSchema:\n" + schema
+            + "\n\nRules:\n"
+            "- Use Freight_Clean for costs, Weight_Clean for weight\n"
+            "- Filter NULLs: WHERE Freight_Clean IS NOT NULL\n"
+            "- Wrap spaced column names in double quotes\n"
+            "- Use GROUP BY + ORDER BY + LIMIT 10 for rankings\n"
+            "- Never use nested aggregates\n"
+            "- Return ONLY the SQL query\n\n"
+            "SQL Query:"
+        )
+        sql_response = llm.invoke(prompt)
+        sql_query = sql_response.content.strip().replace("```sql", "").replace("```", "").strip()
 
     try:
         result = conn.execute(sql_query).fetchall()
@@ -150,16 +193,18 @@ SQL Query:"""
         for row in result[:20]:
             result_text += " | ".join([str(x) for x in row]) + "\n"
 
-        answer_prompt = f"""Based on these SQL results:
-{result_text}
-
-Answer this question in plain English: {question}
-Rules:
-- Always include specific numbers from results
-- Round decimals to 2 places
-- Format currency with $ sign
-- Format large numbers with commas
-- Never say a value is not provided"""
+        answer_prompt = (
+            "Based on these SQL results:\n"
+            + result_text
+            + "\nAnswer this question in plain English: "
+            + question
+            + "\nRules:\n"
+            "- Include specific numbers\n"
+            "- Round decimals to 2 places\n"
+            "- Format currency with $ sign\n"
+            "- Format large numbers with commas\n"
+            "- Be direct, one or two sentences only"
+        )
 
         final_answer = llm.invoke(answer_prompt)
         return final_answer.content, "sql"
@@ -170,7 +215,12 @@ Rules:
 def answer_with_rag(question, vectorstore, llm):
     docs = vectorstore.as_retriever(search_kwargs={"k": 20}).invoke(question)
     context = "\n".join([doc.page_content for doc in docs])
-    prompt = f"Based on this supply chain data:\n{context}\n\nAnswer this question: {question}"
+    prompt = (
+        "Based on this supply chain data:\n"
+        + context
+        + "\n\nAnswer this question: "
+        + question
+    )
     response = llm.invoke(prompt)
     return response.content, "rag"
 
@@ -224,7 +274,7 @@ if st.button("Ask"):
         with st.spinner("Searching supply chain data..."):
             if is_out_of_scope(question):
                 answer = (
-                    "⚠️ I can only answer questions about the USAID Supply Chain "
+                    "I can only answer questions about the USAID Supply Chain "
                     "Shipment dataset. Try asking about shipment costs, vendors, "
                     "countries, freight modes, or product types."
                 )
