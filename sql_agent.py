@@ -85,13 +85,21 @@ Rules:
         return f"Could not execute SQL query: {str(e)}"
 
 if __name__ == "__main__":
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=os.getenv("GOOGLE_API_KEY"))
+    from langchain_groq import ChatGroq
+    try:
+        llm = ChatGroq(model="llama-3.1-8b-instant", groq_api_key=os.getenv("GROQ_API_KEY"))
+        llm.invoke("hi")
+        print("Using Groq llama-3.1-8b-instant")
+    except:
+        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", google_api_key=os.getenv("GOOGLE_API_KEY"))
+        print("Using Gemini 2.5 Flash Lite")
+    
     conn = create_database()
     
     test_questions = [
-           "What is the average freight cost per kg for air shipments?",
-           "Which country has the highest freight cost per kg?",
-           "Compare average freight cost per kg across all shipment modes?"
+        "What is the average freight cost per kg for air shipments?",
+        "Which country has the highest freight cost per kg?",
+        "Compare average freight cost per kg across all shipment modes?"
     ]
     
     for question in test_questions:
