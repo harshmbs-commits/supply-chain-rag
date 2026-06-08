@@ -24,7 +24,7 @@ def load_rag_system():
     chunks = text_splitter.split_documents(documents)
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vectorstore = Chroma.from_documents(chunks, embeddings, persist_directory="./chroma_db")
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", google_api_key=os.getenv("GOOGLE_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=os.getenv("GOOGLE_API_KEY"))
     return vectorstore, llm
 
 vectorstore, llm = load_rag_system()
